@@ -14,8 +14,8 @@ export function Auth() {
       
       if (error) throw error
       alert('Verifique seu email para o link de login!')
-    } catch (error) {
-      alert(error.message)
+    } catch (error: any) {
+      alert(error?.message || 'Ocorreu um erro ao tentar fazer login')
     } finally {
       setLoading(false)
     }
