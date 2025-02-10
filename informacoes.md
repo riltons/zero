@@ -1,0 +1,16 @@
+GitHub
+https://github.com/riltons/zero
+
+Vercel
+https://vercel.com/riltons-projects/zero
+
+Supabase
+domatchcopilot
+URL
+https://lqiacjwmrqnsnzzxmwgv.supabase.co
+
+anon public
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxaWFjandtcnFuc256enhtd2d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkxNzgwNzksImV4cCI6MjA1NDc1NDA3OX0.e6SfSNczPURIIXAbwsH0sn-bogSX49_4ofIkZvVQZ8E
+
+service_rolesecret
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxaWFjandtcnFuc256enhtd2d2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTE3ODA3OSwiZXhwIjoyMDU0NzU0MDc5fQ.g3o9-ZNCTMce26DusbaxKEvTyiYFNamJzNHGUsuHX8E
