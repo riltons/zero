@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { Auth } from './components/Auth'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { Dashboard } from './components/Dashboard'
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -26,21 +29,18 @@ function App() {
       </header>
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {!session ? (
-            <Auth />
-          ) : (
-            <div className="border-4 border-dashed border-gray-200 rounded-lg h-96 flex items-center justify-center flex-col gap-4">
-              <p className="text-xl text-gray-600">
-                Bem-vindo, {session.user.email}!
-              </p>
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="bg-red-600 text-white rounded-md py-2 px-4 text-sm font-semibold hover:bg-red-700"
-              >
-                Sair
-              </button>
-            </div>
-          )}
+          <Routes>
+            <Route path="/login" element={<Auth />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </div>
       </main>
     </div>

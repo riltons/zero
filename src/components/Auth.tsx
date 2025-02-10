@@ -1,18 +1,23 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import { Navigate } from 'react-router-dom'
 
 export function Auth() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
+  const { signInWithEmail, user } = useAuth()
+
+  // Redireciona se já estiver autenticado
+  if (user) {
+    return <Navigate to="/dashboard" />
+  }
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     try {
       setLoading(true)
-      const { error } = await supabase.auth.signInWithOtp({ email })
-      
-      if (error) throw error
+      await signInWithEmail(email)
       alert('Verifique seu email para o link de login!')
     } catch (error: any) {
       alert(error?.message || 'Ocorreu um erro ao tentar fazer login')
@@ -22,29 +27,43 @@ export function Auth() {
   }
 
   return (
-    <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-2">
-      <form className="flex-1 flex flex-col w-full justify-center gap-2" onSubmit={handleLogin}>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
-            id="email"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            type="email"
-            placeholder="Seu email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Entre na sua conta
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Ou{' '}
+            <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+              comece seu período de teste gratuito
+            </a>
+          </p>
         </div>
-        <button
-          type="submit"
-          className="bg-indigo-600 text-white rounded-md py-2 px-4 text-sm font-semibold hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          disabled={loading}
-        >
-          {loading ? 'Enviando...' : 'Enviar link mágico'}
-        </button>
-      </form>
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              id="email"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              type="email"
+              placeholder="Seu email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            disabled={loading}
+          >
+            {loading ? 'Enviando...' : 'Enviar link mágico'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
