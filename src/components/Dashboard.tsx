@@ -1,5 +1,6 @@
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from './ui/Button'
+import { Logo } from './ui/Logo'
 
 export function Dashboard() {
   const { user, signOut } = useAuth()
@@ -10,7 +11,7 @@ export function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold" style={{ color: '#213435' }}>Dashboard</h1>
+              <Logo />
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium" style={{ color: '#46685b' }}>

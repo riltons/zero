@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hexágono de fundo -->
+  <path 
+    d="M10 0H30L40 20L30 40H10L0 20L10 0Z" 
+    fill="#213435"
+  />
+  
+  <!-- Círculo interno -->
+  <circle 
+    cx="20" 
+    cy="20" 
+    r="16" 
+    fill="white" 
+    stroke="#46685b" 
+    stroke-width="2"
+  />
+  
+  <!-- Linha vertical -->
+  <line 
+    x1="20" 
+    y1="8" 
+    x2="20" 
+    y2="32" 
+    stroke="#46685b" 
+    stroke-width="2"
+  />
+  
+  <!-- Letras -->
+  <text 
+    x="20" 
+    y="17" 
+    text-anchor="middle" 
+    fill="#213435" 
+    font-family="Arial" 
+    font-weight="900" 
+    font-size="12"
+  >D</text>
+  <text 
+    x="20" 
+    y="29" 
+    text-anchor="middle" 
+    fill="#46685b" 
+    font-family="Arial" 
+    font-weight="900" 
+    font-size="12"
+  >M</text>
+</svg>
