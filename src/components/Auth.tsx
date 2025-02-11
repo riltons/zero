@@ -14,10 +14,13 @@ export function Auth() {
     password: '',
     confirmPassword: '',
     name: '',
+    nickname: '',
+    phone: ''
   })
   const [fieldErrors, setFieldErrors] = useState<{
     password?: string
     confirmPassword?: string
+    phone?: string
   }>({})
 
   if (user) {
@@ -33,6 +36,10 @@ export function Auth() {
       }
       if (formData.password !== formData.confirmPassword) {
         errors.confirmPassword = 'As senhas não coincidem'
+      }
+      // Validação básica de telefone (apenas números com DDD)
+      if (!/^\d{10,11}$/.test(formData.phone.replace(/\D/g, ''))) {
+        errors.phone = 'Telefone inválido. Use o formato: DDD + número'
       }
     }
 
@@ -55,7 +62,15 @@ export function Auth() {
       if (isLogin) {
         await signInWithPassword(formData.email, formData.password)
       } else {
-        const { success, error } = await signUp(formData.email, formData.password, formData.name)
+        const { success, error } = await signUp(
+          formData.email, 
+          formData.password, 
+          formData.name,
+          {
+            phone: formData.phone.replace(/\D/g, ''),
+            nickname: formData.nickname || undefined
+          }
+        )
         if (!success && error) {
           setError(error)
         }
@@ -68,9 +83,24 @@ export function Auth() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value
+
+    // Formatação de telefone
+    if (e.target.name === 'phone') {
+      value = value.replace(/\D/g, '')
+      if (value.length <= 11) {
+        if (value.length > 2) {
+          value = `(${value.slice(0, 2)}) ${value.slice(2)}`
+        }
+        if (value.length > 10) {
+          value = value.slice(0, 10) + '-' + value.slice(10)
+        }
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [e.target.name]: value,
     }))
   }
 
@@ -83,6 +113,8 @@ export function Auth() {
       password: '',
       confirmPassword: '',
       name: '',
+      nickname: '',
+      phone: ''
     })
   }
 
@@ -110,17 +142,43 @@ export function Auth() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
-              <Input
-                label="Nome"
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                disabled={loading}
-                placeholder="Seu nome completo"
-                className="border-[#46685b] focus:border-[#648a64]"
-              />
+              <>
+                <Input
+                  label="Nome"
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                  placeholder="Seu nome completo"
+                  className="border-[#46685b] focus:border-[#648a64]"
+                />
+
+                <Input
+                  label="Apelido (opcional)"
+                  type="text"
+                  name="nickname"
+                  value={formData.nickname}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="Como você é conhecido"
+                  className="border-[#46685b] focus:border-[#648a64]"
+                />
+
+                <Input
+                  label="Celular"
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                  placeholder="(00) 00000-0000"
+                  error={fieldErrors.phone}
+                  className="border-[#46685b] focus:border-[#648a64]"
+                />
+              </>
             )}
 
             <Input

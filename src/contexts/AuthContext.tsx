@@ -11,15 +11,34 @@ interface Profile {
   updated_at: string
 }
 
+interface Player {
+  id: string
+  full_name: string
+  nickname?: string
+  phone: string
+  user_id?: string
+  created_at: string
+  updated_at: string
+}
+
 interface AuthContextType {
   session: Session | null
   user: User | null
   profile: Profile | null
+  player: Player | null
   isAdmin: boolean
   isOrganizer: boolean
   signOut: () => Promise<void>
   signInWithPassword: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, name: string) => Promise<{ success: boolean, error?: string, message?: string }>
+  signUp: (
+    email: string, 
+    password: string, 
+    name: string,
+    playerData?: {
+      phone: string
+      nickname?: string
+    }
+  ) => Promise<{ success: boolean, error?: string, message?: string }>
   updateUserRoles: (userId: string, roles: string[]) => Promise<{ success: boolean, message: string }>
   updateProfile: (userId: string, fullName: string) => Promise<{ success: boolean, message: string }>
 }
@@ -30,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [player, setPlayer] = useState<Player | null>(null)
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -46,10 +66,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return data
   }
 
+  const fetchPlayer = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('players')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // Ignora erro de não encontrado
+      console.error('Erro ao buscar jogador:', error)
+    }
+
+    return data || null
+  }
+
   useEffect(() => {
-    const loadProfile = async (userId: string) => {
-      const profile = await fetchProfile(userId)
-      setProfile(profile)
+    const loadUserData = async (userId: string) => {
+      const [profileData, playerData] = await Promise.all([
+        fetchProfile(userId),
+        fetchPlayer(userId)
+      ])
+      
+      setProfile(profileData)
+      setPlayer(playerData)
     }
 
     // Buscar sessão inicial
@@ -57,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        loadProfile(session.user.id)
+        loadUserData(session.user.id)
       }
     })
 
@@ -66,16 +105,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        loadProfile(session.user.id)
+        loadUserData(session.user.id)
       } else {
         setProfile(null)
+        setPlayer(null)
       }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (
+    email: string, 
+    password: string, 
+    name: string,
+    playerData?: {
+      phone: string
+      nickname?: string
+    }
+  ) => {
     try {
       if (!email || !password || !name) {
         return { 
@@ -96,7 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         options: {
           data: {
-            full_name: name
+            full_name: name,
+            phone: playerData?.phone,
+            nickname: playerData?.nickname
           }
         }
       })
@@ -196,6 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     user,
     profile,
+    player,
     isAdmin: profile?.roles.includes('admin') ?? false,
     isOrganizer: profile?.roles.includes('organizer') ?? false,
     signOut,
@@ -205,14 +256,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateProfile
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')

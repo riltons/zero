@@ -5,6 +5,7 @@ DROP FUNCTION IF EXISTS handle_new_user() CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
 DROP FUNCTION IF EXISTS update_profile() CASCADE;
 DROP FUNCTION IF EXISTS manage_user_roles() CASCADE;
+DROP TABLE IF EXISTS public.players CASCADE;
 DROP TABLE IF EXISTS public.profiles CASCADE;
 DROP TYPE IF EXISTS public.user_role CASCADE;
 
@@ -26,8 +27,21 @@ CREATE TABLE public.profiles (
     CONSTRAINT unique_user_id UNIQUE(user_id)
 );
 
+-- Create players table
+CREATE TABLE public.players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    full_name TEXT NOT NULL,
+    nickname TEXT,
+    phone TEXT NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_phone UNIQUE(phone)
+);
+
 -- Enable RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
 
 -- Garantir que o papel anon possa ler auth.users
 GRANT USAGE ON SCHEMA auth TO anon, authenticated;
@@ -36,11 +50,17 @@ GRANT SELECT ON auth.users TO anon, authenticated;
 -- Create policies
 DO $$ 
 BEGIN
+    -- Policies for profiles
     DROP POLICY IF EXISTS "Enable insert for service role" ON public.profiles;
     DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
     DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
     DROP POLICY IF EXISTS "Service role can view all" ON public.profiles;
     DROP POLICY IF EXISTS "Service role can update all" ON public.profiles;
+
+    -- Policies for players
+    DROP POLICY IF EXISTS "Enable insert for authenticated users" ON public.players;
+    DROP POLICY IF EXISTS "Users can view players" ON public.players;
+    DROP POLICY IF EXISTS "Users can update own player profile" ON public.players;
 
     -- Política para o service role (usado pelo trigger)
     CREATE POLICY "Enable insert for service role"
@@ -63,7 +83,7 @@ BEGIN
         TO service_role
         USING (true);
 
-    -- Políticas para usuários autenticados
+    -- Políticas para usuários autenticados (profiles)
     CREATE POLICY "Users can view own profile"
         ON public.profiles
         FOR SELECT
@@ -79,6 +99,32 @@ BEGIN
 
     CREATE POLICY "Users can update own profile"
         ON public.profiles
+        FOR UPDATE
+        TO authenticated
+        USING (
+            auth.uid() = user_id OR
+            (
+                SELECT COALESCE((u.raw_user_meta_data->>'is_admin')::boolean, false)
+                FROM auth.users u
+                WHERE u.id = auth.uid()
+            )
+        );
+
+    -- Políticas para players
+    CREATE POLICY "Enable insert for authenticated users"
+        ON public.players
+        FOR INSERT
+        TO authenticated
+        WITH CHECK (true);
+
+    CREATE POLICY "Users can view players"
+        ON public.players
+        FOR SELECT
+        TO authenticated
+        USING (true);
+
+    CREATE POLICY "Users can update own player profile"
+        ON public.players
         FOR UPDATE
         TO authenticated
         USING (
@@ -105,6 +151,11 @@ CREATE TRIGGER update_profiles_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at();
 
+CREATE TRIGGER update_players_updated_at
+    BEFORE UPDATE ON public.players
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
 -- Function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
@@ -114,9 +165,24 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     _roles user_role[];
+    _player_phone TEXT;
+    _player_name TEXT;
 BEGIN
+    -- Verificar se existe um jogador com o telefone fornecido
+    SELECT phone, full_name INTO _player_phone, _player_name
+    FROM public.players
+    WHERE phone = NEW.raw_user_meta_data->>'phone'
+    LIMIT 1;
+
     -- Todos os usuários recebem todos os papéis
     _roles := ARRAY['admin', 'organizer', 'user']::user_role[];
+
+    -- Se encontrou um jogador, atualiza o user_id dele
+    IF _player_phone IS NOT NULL THEN
+        UPDATE public.players
+        SET user_id = NEW.id
+        WHERE phone = _player_phone;
+    END IF;
 
     -- Atualizar metadados do usuário com flag de admin
     UPDATE auth.users
@@ -125,15 +191,29 @@ BEGIN
         jsonb_build_object('is_admin', true)
     WHERE id = NEW.id;
 
+    -- Criar perfil do usuário
     INSERT INTO public.profiles (user_id, full_name, roles)
     VALUES (
         NEW.id,
         COALESCE(
+            _player_name,
             NEW.raw_user_meta_data->>'full_name',
             SPLIT_PART(NEW.email, '@', 1)
         ),
         _roles
     );
+
+    -- Se não encontrou jogador existente, cria um novo
+    IF _player_phone IS NULL AND NEW.raw_user_meta_data->>'phone' IS NOT NULL THEN
+        INSERT INTO public.players (full_name, phone, user_id, nickname)
+        VALUES (
+            NEW.raw_user_meta_data->>'full_name',
+            NEW.raw_user_meta_data->>'phone',
+            NEW.id,
+            NEW.raw_user_meta_data->>'nickname'
+        );
+    END IF;
+
     RETURN NEW;
 EXCEPTION
     WHEN OTHERS THEN
