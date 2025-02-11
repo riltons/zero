@@ -7,7 +7,8 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   signOut: () => Promise<void>
-  signInWithEmail: (email: string) => Promise<void>
+  signInWithPassword: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, name: string) => Promise<{ success: boolean, error?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -35,9 +36,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signInWithEmail = async (email: string) => {
-    const { error } = await supabase.auth.signInWithOtp({ email })
+  const signInWithPassword = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     if (error) throw error
+  }
+
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      })
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
   }
 
   const signOut = async () => {
@@ -50,7 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     signOut,
-    signInWithEmail,
+    signInWithPassword,
+    signUp,
   }
 
   return (
@@ -63,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
 }
