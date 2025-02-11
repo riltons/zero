@@ -26,6 +26,7 @@ interface AuthContextType {
   user: User | null
   profile: Profile | null
   player: Player | null
+  loading: boolean
   isAdmin: boolean
   isOrganizer: boolean
   signOut: () => Promise<void>
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [player, setPlayer] = useState<Player | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -82,13 +84,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const loadUserData = async (userId: string) => {
-      const [profileData, playerData] = await Promise.all([
-        fetchProfile(userId),
-        fetchPlayer(userId)
-      ])
-      
-      setProfile(profileData)
-      setPlayer(playerData)
+      try {
+        const [profileData, playerData] = await Promise.all([
+          fetchProfile(userId),
+          fetchPlayer(userId)
+        ])
+        
+        setProfile(profileData)
+        setPlayer(playerData)
+      } finally {
+        setLoading(false)
+      }
     }
 
     // Buscar sessão inicial
@@ -97,6 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
       if (session?.user) {
         loadUserData(session.user.id)
+      } else {
+        setLoading(false)
       }
     })
 
@@ -109,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null)
         setPlayer(null)
+        setLoading(false)
       }
     })
 
@@ -247,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     profile,
     player,
+    loading,
     isAdmin: profile?.roles.includes('admin') ?? false,
     isOrganizer: profile?.roles.includes('organizer') ?? false,
     signOut,

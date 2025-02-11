@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 
 export function Auth() {
   const { signInWithPassword, signUp, user } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const location = useLocation()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,7 +25,8 @@ export function Auth() {
   }>({})
 
   if (user) {
-    return <Navigate to="/" />
+    const from = (location.state as any)?.from || '/dashboard'
+    return <Navigate to={from} replace />
   }
 
   const validateForm = () => {
@@ -37,7 +39,6 @@ export function Auth() {
       if (formData.password !== formData.confirmPassword) {
         errors.confirmPassword = 'As senhas não coincidem'
       }
-      // Validação básica de telefone (apenas números com DDD)
       if (!/^\d{10,11}$/.test(formData.phone.replace(/\D/g, ''))) {
         errors.phone = 'Telefone inválido. Use o formato: DDD + número'
       }
@@ -50,33 +51,29 @@ export function Auth() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
-    setFieldErrors({})
-
-    if (!validateForm()) {
-      return
-    }
-
     setLoading(true)
 
     try {
-      if (isLogin) {
-        await signInWithPassword(formData.email, formData.password)
-      } else {
-        const { success, error } = await signUp(
-          formData.email, 
-          formData.password, 
-          formData.name,
-          {
-            phone: formData.phone.replace(/\D/g, ''),
-            nickname: formData.nickname || undefined
-          }
-        )
-        if (!success && error) {
-          setError(error)
-        }
+      if (!validateForm()) {
+        setLoading(false)
+        return
       }
-    } catch (error: any) {
-      setError(error.message)
+
+      if (isLogin) {
+        const { error } = await signInWithPassword(formData.email, formData.password)
+        if (error) throw error
+      } else {
+        const { error } = await signUp(
+          formData.email,
+          formData.password,
+          formData.name,
+          formData.nickname,
+          formData.phone
+        )
+        if (error) throw error
+      }
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -102,20 +99,6 @@ export function Auth() {
       ...prev,
       [e.target.name]: value,
     }))
-  }
-
-  const toggleForm = () => {
-    setIsLogin(!isLogin)
-    setError(null)
-    setFieldErrors({})
-    setFormData({
-      email: '',
-      password: '',
-      confirmPassword: '',
-      name: '',
-      nickname: '',
-      phone: ''
-    })
   }
 
   return (
@@ -239,7 +222,19 @@ export function Auth() {
 
           <div className="text-center pt-4">
             <button
-              onClick={toggleForm}
+              onClick={() => {
+                setIsLogin(!isLogin)
+                setError(null)
+                setFieldErrors({})
+                setFormData({
+                  email: '',
+                  password: '',
+                  confirmPassword: '',
+                  name: '',
+                  nickname: '',
+                  phone: ''
+                })
+              }}
               type="button"
               style={{ color: '#46685b' }}
               className="hover:text-[#213435] transition-colors"

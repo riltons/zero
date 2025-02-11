@@ -2,17 +2,45 @@ import { useAuth } from '../contexts/AuthContext'
 import { Button } from './ui/Button'
 import { Logo } from './ui/Logo'
 import { LogOut } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 
 export function Dashboard() {
   const { user, signOut, profile } = useAuth()
+  const location = useLocation()
+
+  const isActive = (path: string) => {
+    return location.pathname === path
+  }
 
   return (
     <div className="min-h-screen w-full fixed inset-0" style={{ backgroundColor: '#213435' }}>
       <nav className="bg-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center gap-8">
               <Logo />
+              <div className="hidden md:flex items-center gap-4">
+                <Link
+                  to="/"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/') 
+                      ? 'bg-[#46685b] text-white' 
+                      : 'text-[#46685b] hover:bg-gray-100'
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  to="/players"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/players')
+                      ? 'bg-[#46685b] text-white'
+                      : 'text-[#46685b] hover:bg-gray-100'
+                  }`}
+                >
+                  Jogadores
+                </Link>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium" style={{ color: '#46685b' }}>
