@@ -1,18 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { Profile, UserRole } from '../types/user'
 
 interface AuthContextType {
   session: Session | null
   user: User | null
-  profile: Profile | null
-  loading: boolean
-  isAdmin: boolean
-  isOrganizer: boolean
   signOut: () => Promise<void>
   signInWithPassword: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, name: string) => Promise<{ success: boolean, error?: string }>
+  signUp: (email: string, password: string, name: string) => Promise<{ success: boolean, error?: string, message?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -20,52 +15,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  // Buscar perfil do usuário
-  const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    if (error) {
-      console.error('Erro ao buscar perfil:', error)
-      return null
-    }
-
-    return data as Profile
-  }
 
   useEffect(() => {
     // Busca a sessão inicial
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id)
-        setProfile(profile)
-      }
-      
-      setLoading(false)
     })
 
     // Escuta mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id)
-        setProfile(profile)
-      } else {
-        setProfile(null)
-      }
-      
-      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
@@ -81,36 +42,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      // 1. Criar usuário
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      if (!email || !password || !name) {
+        return { 
+          success: false, 
+          error: 'Por favor, preencha todos os campos' 
+        }
+      }
+
+      if (password.length < 6) {
+        return { 
+          success: false, 
+          error: 'A senha deve ter pelo menos 6 caracteres' 
+        }
+      }
+
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
       })
 
-      if (authError) {
-        return { success: false, error: authError.message }
+      if (error) {
+        console.error('Erro ao criar usuário:', error)
+        return { 
+          success: false, 
+          error: error.message === 'User already registered'
+            ? 'Este e-mail já está registrado'
+            : 'Erro ao criar usuário. Por favor, tente novamente.' 
+        }
       }
 
-      if (!authData.user) {
-        return { success: false, error: 'Erro ao criar usuário' }
+      return { 
+        success: true,
+        message: 'Conta criada com sucesso! Por favor, verifique seu e-mail para confirmar o cadastro.'
       }
-
-      // 2. Criar perfil com papéis iniciais
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authData.user.id,
-          full_name: name,
-          roles: ['admin', 'organizer'] as UserRole[],
-        })
-
-      if (profileError) {
-        return { success: false, error: profileError.message }
-      }
-
-      return { success: true }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      console.error('Erro inesperado:', error)
+      return { 
+        success: false, 
+        error: 'Ocorreu um erro inesperado. Por favor, tente novamente.' 
+      }
     }
   }
 
@@ -122,10 +97,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     session,
     user,
-    profile,
-    loading,
-    isAdmin: profile?.roles.includes('admin') ?? false,
-    isOrganizer: profile?.roles.includes('organizer') ?? false,
     signOut,
     signInWithPassword,
     signUp,
@@ -133,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   )
 }
