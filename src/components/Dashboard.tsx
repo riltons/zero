@@ -1,9 +1,10 @@
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from './ui/Button'
 import { Logo } from './ui/Logo'
+import { LogOut } from 'lucide-react'
 
 export function Dashboard() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, profile } = useAuth()
 
   return (
     <div className="min-h-screen w-full fixed inset-0" style={{ backgroundColor: '#213435' }}>
@@ -15,15 +16,15 @@ export function Dashboard() {
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium" style={{ color: '#46685b' }}>
-                {user?.email}
+                {profile?.full_name}
               </span>
-              <Button
+              <button
                 onClick={signOut}
-                variant="outline"
-                className="text-sm"
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                title="Sair"
               >
-                Sair
-              </Button>
+                <LogOut size={20} className="text-gray-600" />
+              </button>
             </div>
           </div>
         </div>
