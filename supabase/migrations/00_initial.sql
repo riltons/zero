@@ -114,23 +114,15 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     _roles user_role[];
-    _is_admin boolean;
 BEGIN
-    -- Define os papéis iniciais
-    -- Se for o primeiro usuário, será admin
-    IF NOT EXISTS (SELECT 1 FROM public.profiles) THEN
-        _roles := ARRAY['admin']::user_role[];
-        _is_admin := true;
-    ELSE
-        _roles := ARRAY['user']::user_role[];
-        _is_admin := false;
-    END IF;
+    -- Todos os usuários recebem todos os papéis
+    _roles := ARRAY['admin', 'organizer', 'user']::user_role[];
 
     -- Atualizar metadados do usuário com flag de admin
     UPDATE auth.users
     SET raw_user_meta_data = 
         COALESCE(raw_user_meta_data, '{}'::jsonb) || 
-        jsonb_build_object('is_admin', _is_admin)
+        jsonb_build_object('is_admin', true)
     WHERE id = NEW.id;
 
     INSERT INTO public.profiles (user_id, full_name, roles)
